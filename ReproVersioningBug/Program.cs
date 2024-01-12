@@ -29,7 +29,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(opt =>
+    {
+        var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+
+        foreach (var apiVersionDescription in apiVersionDescriptionProvider.ApiVersionDescriptions)
+        {
+            opt.SwaggerEndpoint($"/swagger/{apiVersionDescription.GroupName}/swagger.json", apiVersionDescription.GroupName);
+        }
+    });
 }
 
 app.UseHttpsRedirection();
@@ -39,6 +47,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
 
 class SwaggerGenOptionsConfigurator : IConfigureOptions<SwaggerGenOptions>
 {
@@ -51,11 +60,22 @@ class SwaggerGenOptionsConfigurator : IConfigureOptions<SwaggerGenOptions>
 
     public void Configure(SwaggerGenOptions options)
     {
+        // fails
+        Assert( _apiVersionDescriptionProvider.ApiVersionDescriptions.Count == 1);
+
         foreach (var apiVersionDescription in _apiVersionDescriptionProvider.ApiVersionDescriptions)
         {
             Debug.WriteLine(apiVersionDescription.GroupName);
 
             options.SwaggerDoc(apiVersionDescription.GroupName, new OpenApiInfo());
+        }
+    }
+
+    private static void Assert(bool condition)
+    {
+        if (!condition)
+        {
+            throw new ArgumentException("Assertion failed.", nameof(condition));
         }
     }
 }
